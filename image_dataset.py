@@ -1,8 +1,6 @@
 import numpy as np
-import math
 import tensorflow as tf
 import os
-import re 
 
 def read_image(filename:str, inpaint_size:int, shape:(int,int,int)):
     # Load the raw data from the file
@@ -18,8 +16,8 @@ def read_image(filename:str, inpaint_size:int, shape:(int,int,int)):
                 b[-inpaint_size:,-inpaint_size:] = np.mean(b)
                 yield (tf.constant(b), tf.constant(a))
     else:
-        for y in range(0, h - shape[0], inpaint_size):
-            for x in range(0, w - shape[1], inpaint_size):
+        for y in range(0, h - shape[0], shape[0]):
+            for x in range(0, w - shape[1], shape[1]):
                 a = image[y:y+shape[0], x:x+shape[1]].numpy()
                 b = a.copy()
                 yield (tf.constant(b), tf.constant(a))
@@ -58,7 +56,6 @@ def create_dataset(data_dir: str, batch_size: int,
 
 if __name__ == "__main__":
     import cv2 as cv
-    import scipy
     data_dir="./images/train"
     inpaint_size = 16
     shape = (32,32,3)
@@ -68,7 +65,6 @@ if __name__ == "__main__":
     count = 0
     for im0,im1 in shuffled_ds:
        v = (np.hstack([im0.numpy(), im1.numpy()]) * 255).astype(np.uint8)
-       #v = scipy.ndimage.zoom(v, 4, order=0)
        cv.imshow("test", v)
        if 27 == cv.waitKey(0):
            break
