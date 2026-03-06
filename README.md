@@ -8,9 +8,9 @@ Authors: Oleksandr Kis (o.kis@duikt.edu.ua), Gennadiy Kis
 
 In brief, it's the experimental autoencoder NN for loseless image compression for educational and scientific purpose.
 
--   The basic idea the same as [png](https://en.wikipedia.org/wiki/PNG) exploites: pixel filtering by known context and futher
+-   The basic idea is similar to [png](https://en.wikipedia.org/wiki/PNG): pixel filtering by known context and futher
     compression with DEFLATE algorithm
--   The prediction filter is based on autoencoder inpaint convolutional network
+-   The prediction filter is based on autoencoder convolutional network
 -   Two modes are supported - latent space representation and inpaint prediction
 
 
@@ -38,7 +38,8 @@ cd ./AI_ImageCompression
 ## Usage
 For operating the tranied weights is required. Pretrained weights are available in the repository.
 for training use image_cnn.py script. It is tuned to load the latest available checkpoint from the corresponding weights folder
-The training parameters is adjusted immediately in the script image_cnn.py class settings specifies the dimensionality of the latent space and training parameters:
+The training/infrence parameters is adjusted immediately in the script image_cnn.py.
+The class settings specifies the dimensionality of the latent space and training parameters:
 
 ```
 class settings():
@@ -58,11 +59,19 @@ class settings():
 
 Image datasets are expectped in the "./images" "train", "test" and "validate" subfolder respectively
 
-For compression\uncompression use compress.py
-Synopsis: (-c|-u|-t) "input file|folder" "output file|folder"
--c compress creates compressed images in with .bin extension, also created .bmp and .png files for the reference
-The input folder is looked up for .jpg images
--u uncompress the .bin files into png
+For training use
+```
+image_cnn.py [epoch number] [TensorBoard]
+```
+By default single training epoch passed. If added TensorBoard then corresponding callback is added.
+For compression\decompression use compress.py
+Synopsis: compress.py (-c|-d|-t|-v) "input file|folder" "output file|folder"
+-c compress creates compressed images with .bin extension, also .png files are created for the reference,
+ becase of the original image is cropped to be aligned with inpaint block size for simplicity.
+The input folder is looked up for images (gif, jpg, png)
+-d decompress the .bin files into png
+-t generates test output: CNN blocks mask, residual image and residuals histogram
+-v the same as test mode but the output is immediately visualized 
 
 ## Running tests
 Every module contains small test that is run by default

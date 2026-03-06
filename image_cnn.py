@@ -5,6 +5,7 @@ from keras.callbacks import TensorBoard
 import re 
 from image_dataset import create_dataset
 from evaluate_image import evaluate_image
+import numpy as np
 # Check if a GPU is available
 gpu_devices = tf.config.list_physical_devices('GPU')
 
@@ -79,14 +80,16 @@ class ConvAutoencoder(Model):
         else: #default
             self.compile()
 
+
     # Forward pass method defining the encoding and decoding steps
     def call(self, input_data):
         self.encoded_data = self.encoder(input_data)
         decoded_data = self.decoder(self.encoded_data)
         return decoded_data
 
+
     def load_weights(self, block_size: int, inpaint_size: int):
-        checkpoint_path = "weights_" + str(block_size) + "_" + str(inpaint_size) + "/cp-{epoch:04d}.ckpt"
+        checkpoint_path = "./weights_" + str(block_size) + "_" + str(inpaint_size) + "/cp-{epoch:04d}.ckpt"
         checkpoint_dir = os.path.dirname(checkpoint_path)
         latest = tf.train.latest_checkpoint(checkpoint_dir)
 
@@ -97,6 +100,8 @@ class ConvAutoencoder(Model):
             str_list = re.findall(r'\d+', latest)
             if len(str_list) > 0:
                 initial_epoch = int(str_list[-1])
+        else:
+            print("Warning: Loading weights from " + checkpoint_dir + " failed")
         return checkpoint_path, initial_epoch
 
 
@@ -109,60 +114,67 @@ def make_model(loss='binary_crossentropy', input_size=28):
 
 class settings():
     batch_size = 64
-    inpaint_size = 8
+    inpaint_size = 0
     input_size = 24
     # max processing size, if an input image has bigger dims it is resized for faster processing
     max_dim = 640
     # grayscale images only
     channels = 1
-    # use good block mask
+    # use low-variance block mask
     zero_diff = 0
     #loss can be 'binary_crossentropy', "mean_squared_error" or empty string for inference mode
     loss = 'mean_squared_error'
 
 
 if __name__ == "__main__":
-    # Specifying the dimensionality of the latent space and training parameters
-    data_path = "./images"
-    train_epoch_count = 1
-    if len(sys.argv) == 2:
-        train_epoch_count = int(sys.argv[1]) # if 0 then test mode only
-    mode = "latent"
-    if settings.inpaint_size > 0:
-        mode = "inpaint"
-    # Creating an instance of the Autoencoder model
-    autoencoder, input_shape = make_model(settings.loss, settings.input_size)
 
+    # Create an instance of the Autoencoder model
+    autoencoder, input_shape = make_model(settings.loss, settings.input_size)
+    data_path = "./images"
     train, test = create_dataset(data_path, settings.batch_size, settings.inpaint_size, input_shape)
     checkpoint_path, initial_epoch = autoencoder.load_weights(settings.input_size, settings.inpaint_size)
     save_freq = 'epoch'
     n_batches_per_epoch = -1
-    if train.cardinality() != tf.data.INFINITE_CARDINALITY and \
-            train.cardinality() != tf.data.UNKNOWN_CARDINALITY:
+    if train.cardinality() != tf.data.INFINITE_CARDINALITY and train.cardinality() != tf.data.UNKNOWN_CARDINALITY:
         n_batches_per_epoch = int(train.cardinality()) // settings.batch_size
 
     print("initial epoch:", initial_epoch, "batches#:", n_batches_per_epoch)
+    train_epoch_count = train_epoch_count = int(sys.argv[1]) if len(sys.argv) > 1 else 1
+    use_tensorboard = len(sys.argv) > 2 and sys.argv[2] =="TensorBoard"
 
     if train_epoch_count>0:
+        callbacks = []
         # Create a callback that saves the model's weights
         cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
-                                                 save_weights_only=True,
-                                                 verbose=1,
-                                                 save_freq=save_freq)
-        tb_callback = TensorBoard(log_dir ='./log')
+            save_weights_only=True,
+            verbose=1,
+            save_freq=save_freq)
+        callbacks.append(cp_callback)
+        if use_tensorboard:
+            tb_callback = TensorBoard(log_dir ='./log')
+            callbacks.append(tb_callback)
 
         autoencoder.fit(train, epochs=initial_epoch + train_epoch_count, initial_epoch=initial_epoch,
-                batch_size=settings.batch_size,
-                shuffle=True,
-                workers=4,
-                validation_data=test,
-                use_multiprocessing=True,
-                callbacks=[cp_callback, tb_callback])
+            batch_size=settings.batch_size,
+            shuffle=False,
+            workers=4,
+            validation_data=test,
+            use_multiprocessing=True,
+            callbacks=callbacks)
     else:
-       autoencoder.build((settings.batch_size,) + input_shape)
+        autoencoder.build((settings.batch_size,) + input_shape)
 
     autoencoder.summary()
-    # small preview test
+    # preview test
     files = tf.data.Dataset.list_files(data_path + "/test/*.jpg")
+    out_path = "./output"
+    if not os.path.exists(out_path):
+        os.makedirs(out_path)
     for image_path in files:
-       evaluate_image(autoencoder, image_path, settings.inpaint_size, settings.max_dim, input_shape)
+        result_image, original_image = evaluate_image(autoencoder, image_path, settings.inpaint_size, settings.max_dim, input_shape)
+        base = os.path.basename(image_path.numpy().decode())
+        tf.io.write_file(os.path.join(out_path, base + "_result.png"),
+                            tf.io.encode_png(result_image.astype(np.uint8)))
+        tf.io.write_file(os.path.join(out_path, base + "_original.png"),
+                            tf.io.encode_png(original_image.astype(np.uint8)))
+
