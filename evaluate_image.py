@@ -2,7 +2,6 @@ import numpy as np
 import math
 import tensorflow as tf
 import os
-import cv2 as cv
 from differentiate import *
 from image_zlib import \
     decode_datadiff, encode_datadiff,\
@@ -10,6 +9,8 @@ from image_zlib import \
 
 DEBUG_VIEW = False
 VERBOSE = True
+if DEBUG_VIEW:
+    import cv2 as cv
 
 
 def calculate_psnr(img1, img2, max_pixel_value=255.0):
@@ -188,13 +189,13 @@ def compress_image_to_file(model, image: np.array,
 
 
 
-def prepare_image(image_path : str, max_dim : int, block_shape, block_size:int):
+def prepare_image(image_path : str, max_dim : int, block_shape : np.array, inpaint_block_size : int):
     """
     Load image of needed size adjusted for block shape, values is normalized to [0..1]
     :param image_path:
-    :param max_dim: the image is cropped to this size
-    :param block_shape:
-    :param block_size:
+    :param max_dim: the image is resized to this size
+    :param block_shape: input size to autoencoder
+    :param inpaint_block_size: if 0 no inpainting is applied, should be less than block_shape dimensions
     :return:
     """
     data = tf.io.read_file(image_path)
@@ -222,26 +223,26 @@ def prepare_image(image_path : str, max_dim : int, block_shape, block_size:int):
             w = max_dim
 
     # padding
-    if block_size > 0:
-        pad_h = (h - block_shape[0] + block_size) // block_size * block_size + block_shape[0] - block_size
-        pad_w = (w - block_shape[1] + block_size) // block_size * block_size + block_shape[1] - block_size
+    if inpaint_block_size > 0:
+        pad_h = (h - block_shape[0] + inpaint_block_size) // inpaint_block_size * inpaint_block_size + block_shape[0] - inpaint_block_size
+        pad_w = (w - block_shape[1] + inpaint_block_size) // inpaint_block_size * inpaint_block_size + block_shape[1] - inpaint_block_size
     else:
-        pad_h = (h) // block_shape[0] * block_shape[0]
-        pad_w = (w) // block_shape[1] * block_shape[1]
+        pad_h = h // block_shape[0] * block_shape[0]
+        pad_w = w // block_shape[1] * block_shape[1]
 
     if h_orig != h or w_orig != w:
         image = tf.image.resize(image, (h, w))
         if VERBOSE:
-            print("resized to max dimension")
+            print("Input is resized to max acceptable dimension")
     if pad_w > w or pad_h > h:
         image = tf.image.pad_to_bounding_box(image, 0, 0, pad_h, pad_w)
         if VERBOSE:
-            print("padded to fit block shape")
+            print("Input is padded to fit block shape")
     if pad_w < w or pad_h < h:
         image = tf.image.crop_to_bounding_box(image, 0, 0, pad_h, pad_w)
         if VERBOSE:
-            print("cropped to fit block shape")
-    return image, image.shape[:2]
+            print("Input is cropped to fit block shape")
+    return tf.cast(image, np.uint8), tf.shape(image)[:2]
 
 
 scale = 127.
@@ -290,46 +291,47 @@ def latent_restore_image(model, latent: np.array, diff : np.array, input_shape, 
     return result_image.numpy()
 
 
-def evaluate_image(model, image_path, block_size, max_dim, input_shape, batch_size=64):
+def evaluate_image(model, image_path, inpaint_block_size, max_dim, input_shape, batch_size=64):
     """
     Calculates difference between the original and autoencoder output image.
     This can be useful for estimation of the residual statistics.
-    :param model:
-    :param image_path:
-    :param block_size:
-    :param max_dim:
-    :param input_shape:
-    :param batch_size:
-    :return:
+    :param model: CNN autoencoder
+    :param image_path: test image path
+    :param inpaint_block_size: discarded subblock size for inpaining
+    :param max_dim: maximum image processing size
+    :param input_shape: CNN input shape
+    :param batch_size: batch for inference
+    :return: reconstructed and original image (resized to maximum size)
     """
-    image, (h, w) = prepare_image(image_path, block_size=block_size, max_dim=max_dim, block_shape=input_shape)
+    image, (h, w) = prepare_image(image_path, inpaint_block_size=inpaint_block_size, max_dim=max_dim, block_shape=input_shape)
+    image = image.numpy() / 255.
     image_blocks = []
-    if block_size > 0:
-        for y in range(0, h - input_shape[0], block_size):
-            for x in range(0, w - input_shape[1], block_size):
-                block = image[y:y + input_shape[0], x:x + input_shape[1]].numpy()
-                block[-block_size:, -block_size:] = block.mean()
+    if inpaint_block_size > 0:
+        for y in range(0, h - input_shape[0], inpaint_block_size):
+            for x in range(0, w - input_shape[1], inpaint_block_size):
+                block = image[y:y + input_shape[0], x:x + input_shape[1]]
+                block[-inpaint_block_size:, -inpaint_block_size:] = block.mean()
                 image_blocks.append(block)
     else:
         for y in range(0, h, input_shape[0]):
             for x in range(0, w, input_shape[1]):
-                block = image[y:y + input_shape[0], x:x + input_shape[1]].numpy()
+                block = image[y:y + input_shape[0], x:x + input_shape[1]]
                 image_blocks.append(block)
 
     test_block_ds = tf.data.Dataset.from_tensor_slices(image_blocks)
     test_ds = test_block_ds.batch(batch_size)
     latent = model.encoder.predict(test_ds)
-    latent_block_ds = tf.data.Dataset.from_tensor_slices(latent.astype(np.float16))
+    latent_block_ds = tf.data.Dataset.from_tensor_slices(latent)
     latent_ds = latent_block_ds.batch(batch_size)
     result = model.decoder.predict(latent_ds)
     idx = 0
     result_image = np.empty(image.shape, np.float32)
     original_image = np.empty(image.shape, np.float32)
-    if block_size > 0:
-        for y in range(0, h - input_shape[0], block_size):
-            for x in range(0, w - input_shape[1], block_size):
-                result_image[y:y + block_size, x:x + block_size] = result[idx][-block_size:, -block_size:]
-                original_image[y:y + block_size, x:x + block_size] = image_blocks[idx][-block_size:, -block_size:]
+    if inpaint_block_size > 0:
+        for y in range(0, h - input_shape[0], inpaint_block_size):
+            for x in range(0, w - input_shape[1], inpaint_block_size):
+                result_image[y:y + inpaint_block_size, x:x + inpaint_block_size] = result[idx][-inpaint_block_size:, -inpaint_block_size:]
+                original_image[y:y + inpaint_block_size, x:x + inpaint_block_size] = image_blocks[idx][-inpaint_block_size:, -inpaint_block_size:]
                 idx += 1
     else:
         for y in range(0, h, input_shape[0]):
@@ -344,8 +346,9 @@ def evaluate_image(model, image_path, block_size, max_dim, input_shape, batch_si
 
 
 if __name__ == "__main__":
-    image, (h, w) = prepare_image("./images/test/Test_chart_11.jpg", 512, (24,24,1), 8)
-    if image.shape[0] == h and image.shape[1] == w:
+    image, (h, w) = prepare_image("./images/train/Test_chart_11.jpg", max_dim=512, block_shape=(28,28,1), inpaint_block_size=8)
+
+    if tf.shape(image)[0] == h and tf.shape(image)[1] == w:
         print("Image prepared correctly")
     else:
         print("Image preparation failed")

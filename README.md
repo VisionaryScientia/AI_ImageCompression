@@ -22,23 +22,32 @@ requirements.txt: Python dependencies.
 LICENSE: GNU license text.
 
 ## Installation
+
+
 The following prerequisites required:
-Python 3.6.6
+Python 3.8
 with following packages:
 zlib
 numpy
+bitstring
 Tensorflow:  2.6.2
 Keras:  2.6.0
+opencv (required for the result visualization)
+matplotlib (required for the result visualization)
 
 ```sh
 git clone https://github.com/VisionaryScientia/AI_ImageCompression
 cd ./AI_ImageCompression
+setup.bat
 ```
+Setup batch script installs needed python packages and run test
 
 ## Usage
-For operating the tranied weights is required. Pretrained weights are available in the repository.
-for training use image_cnn.py script. It is tuned to load the latest available checkpoint from the corresponding weights folder
-The training/infrence parameters is adjusted immediately in the script image_cnn.py.
+For the compression operating the CNN weights is required. Pretrained weights are available in the repository.
+for training use image_cnn.py script. It is tuned to load the latest available checkpoint from the corresponding weights folder.
+The weight folder should follow pattern 'weights_<block_size>_<inpaint_size>',
+For example, weights_24_0 is used for autoencoder input 24 without inpainting (pure latent space encoding).
+The training/inference parameters is adjusted immediately in the script image_cnn.py.
 The class settings specifies the dimensionality of the latent space and training parameters:
 
 ```
@@ -63,6 +72,11 @@ For training use
 ```
 image_cnn.py [epoch number] [TensorBoard]
 ```
+Or
+```
+train.bat
+```
+
 By default single training epoch passed. If added TensorBoard then corresponding callback is added.
 For compression\decompression use compress.py
 Synopsis: compress.py (-c|-d|-t|-v) "input file|folder" "output file|folder"
@@ -75,6 +89,12 @@ The input folder is looked up for images (gif, jpg, png)
 
 ## Running tests
 Every module contains small test that is run by default
+Use setup.bat to install needed packages and run needed tests. If they are passed then the environment is configured correctly.
+To run compression/decompression test:
+```
+test.bat
+```
+This script compressed a file to the 'compressed' folder then restore it back into 'decompressed' folder and show the result image.
 
 ## LICENSE  
 GNU AGPL

@@ -1,8 +1,6 @@
 import numpy as np
 import zlib
 import bitstring
-#from tensorflow.python.ops.numpy_ops import np_config
-#np_config.enable_numpy_behavior()
 
 CHUNKSIZE = 1024 * 10
 
@@ -25,11 +23,10 @@ def decode_residuals(decompressed_data, shape, dtype=np.int16):
     if use_exp_coding:
         a = bitstring.ConstBitStream(decompressed_data[1:])
         diff_data_list = []
-        len_a = int(shape[0]) * shape[1]
-        count = 0
-        while count < len_a:
+        expected_len = int(shape[0]) * shape[1]
+        while expected_len > 0:
            diff_data_list.append(a.read('se'))
-           count += 1
+           expected_len -= 1
         diff_data = np.array(diff_data_list, dtype)
     else:
         diff_data = np.frombuffer(decompressed_data[1:], dtype=dtype)
