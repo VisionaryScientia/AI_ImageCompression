@@ -304,12 +304,12 @@ def evaluate_image(model, image_path, inpaint_block_size, max_dim, input_shape, 
     :return: reconstructed and original image (resized to maximum size)
     """
     image, (h, w) = prepare_image(image_path, inpaint_block_size=inpaint_block_size, max_dim=max_dim, block_shape=input_shape)
-    image = image.numpy() / 255.
+    image = image.numpy().astype(np.float32) / 255.
     image_blocks = []
     if inpaint_block_size > 0:
         for y in range(0, h - input_shape[0], inpaint_block_size):
             for x in range(0, w - input_shape[1], inpaint_block_size):
-                block = image[y:y + input_shape[0], x:x + input_shape[1]]
+                block = image[y:y + input_shape[0], x:x + input_shape[1]].copy()
                 block[-inpaint_block_size:, -inpaint_block_size:] = block.mean()
                 image_blocks.append(block)
     else:
@@ -325,24 +325,22 @@ def evaluate_image(model, image_path, inpaint_block_size, max_dim, input_shape, 
     latent_ds = latent_block_ds.batch(batch_size)
     result = model.decoder.predict(latent_ds)
     idx = 0
-    result_image = np.empty(image.shape, np.float32)
-    original_image = np.empty(image.shape, np.float32)
+    result_image = np.zeros(image.shape, np.float32)
     if inpaint_block_size > 0:
-        for y in range(0, h - input_shape[0], inpaint_block_size):
-            for x in range(0, w - input_shape[1], inpaint_block_size):
-                result_image[y:y + inpaint_block_size, x:x + inpaint_block_size] = result[idx][-inpaint_block_size:, -inpaint_block_size:]
-                original_image[y:y + inpaint_block_size, x:x + inpaint_block_size] = image_blocks[idx][-inpaint_block_size:, -inpaint_block_size:]
+        b = inpaint_block_size
+        for y in range(input_shape[1] - b, h - b, b):
+            for x in range(input_shape[0] - b, w - b, b):
+                result_image[y:y + b, x:x + b] = result[idx][-b:, -b:]
                 idx += 1
     else:
         for y in range(0, h, input_shape[0]):
             for x in range(0, w, input_shape[1]):
                 result_image[y:y + input_shape[0], x:x + input_shape[1]] = result[idx][:, :]
-                original_image[y:y + input_shape[0], x:x + input_shape[1]] = image_blocks[idx][:, :]
                 idx += 1
 
     result_image *= 255.
-    original_image *= 255.
-    return result_image.astype(np.uint8), original_image.astype(np.uint8)
+    image *= 255.
+    return result_image.astype(np.uint8), image.astype(np.uint8)
 
 
 if __name__ == "__main__":
