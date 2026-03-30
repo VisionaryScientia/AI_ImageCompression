@@ -7,17 +7,17 @@ import tensorflow as tf
 
 def augment_pair(input_block: np.ndarray, target_block: np.ndarray):
     k = random.randint(0, 3)
-    if k:
-        input_block = np.rot90(input_block, k).copy()
-        target_block = np.rot90(target_block, k).copy()
+    if k > 0:
+        input_block = tf.image.rot90(input_block, k)
+        target_block = tf.image.rot90(target_block, k)
 
-    if random.random() < 0.5:
-        input_block = np.flip(input_block, axis=1).copy()
-        target_block = np.flip(target_block, axis=1).copy()
+    if random.randint(0, 3) < 2:
+        input_block = tf.image.flip_left_right(input_block)
+        target_block = tf.image.flip_left_right(target_block)
 
-    if random.random() < 0.5:
-        input_block = np.flip(input_block, axis=0).copy()
-        target_block = np.flip(target_block, axis=0).copy()
+    if random.randint(0, 3) < 2:
+        input_block = tf.image.flip_up_down(input_block)
+        target_block = tf.image.flip_up_down(target_block)
 
     return input_block, target_block
 
@@ -46,40 +46,39 @@ def count_dataset_blocks(data_dir: str, inpaint_size: int, input_shape: (int, in
 
 
 def read_image(filename: str, inpaint_size: int, shape: (int, int, int), augment: bool):
-    # Load the raw data from the file
+    """
+    Load the raw data from the image and split into blocks
+    """
     data = tf.io.read_file(filename)
     image = tf.cast(tf.io.decode_jpeg(data, channels=shape[2]), tf.float32)
     image *= 1/255.
     h, w = image.shape[:2]
+    y_limit = h - shape[0]
+    x_limit = w - shape[1]
+
     if inpaint_size > 0:
-        y_limit = h - shape[0]
-        x_limit = w - shape[1]
-        y_offset = random.randint(0, max(0, inpaint_size - 1)) if y_limit > 0 else 0
-        x_offset = random.randint(0, max(0, inpaint_size - 1)) if x_limit > 0 else 0
-        coords = [(y, x)
-            for y in range(y_offset, y_limit + 1, inpaint_size)
-            for x in range(x_offset, x_limit + 1, inpaint_size)]
-        random.shuffle(coords)
-        for y, x in coords:
-            a = image[y:y + shape[0], x:x + shape[1]].numpy()
-            b = a.copy()
-            b[-inpaint_size:, -inpaint_size:] = np.mean(b)
-            if augment:
-                b, a = augment_pair(b, a)
-            yield (tf.constant(b), tf.constant(a))
-    else:
-        step = shape[0]
-        y_limit = h - shape[0]
-        x_limit = w - shape[1]
+        step = inpaint_size
         y_offset = random.randint(0, max(0, step - 1)) if y_limit > 0 else 0
         x_offset = random.randint(0, max(0, step - 1)) if x_limit > 0 else 0
         coords = [(y, x)
             for y in range(y_offset, y_limit + 1, step)
             for x in range(x_offset, x_limit + 1, step)]
-        random.shuffle(coords)
         for y, x in coords:
-            a = image[y:y + shape[0], x:x + shape[1]].numpy()
-            b = a.copy()
+            a = image[y:y + shape[0], x:x + shape[1]]
+            b = tf.identity(a)
+            if augment:
+                b, a = augment_pair(b, a)
+            b[-inpaint_size:, -inpaint_size:] = np.mean(a)
+            yield (tf.constant(b), tf.constant(a))
+    else:
+        y_offset = random.randint(0, max(0, shape[0] - 1)) if y_limit > 0 else 0
+        x_offset = random.randint(0, max(0, shape[1] - 1)) if x_limit > 0 else 0
+        coords = [(y, x)
+            for y in range(y_offset, y_limit + 1, shape[0])
+            for x in range(x_offset, x_limit + 1, shape[1])]
+        for y, x in coords:
+            a = image[y:y + shape[0], x:x + shape[1]]
+            b = tf.identity(a)
             if augment:
                 b, a = augment_pair(b, a)
             yield (tf.constant(b), tf.constant(a))
@@ -106,7 +105,7 @@ def process_path(data_dir: str, inpaint_size: int, shape: (int, int, int), augme
 
 def create_dataset(data_dir: str, batch_size: int,
                    inpaint_size:int, input_shape:(int,int,int)):
-    buffer_size = 10000
+    buffer_size = 1000
     train_steps = max(1, count_dataset_blocks(data_dir + "/train", inpaint_size, input_shape) // batch_size)
     validate_steps = max(1, count_dataset_blocks(data_dir + "/validate", inpaint_size, input_shape) // batch_size)
     train_block_ds=tf.data.Dataset.from_generator(process_path, args = [data_dir + "/train", inpaint_size, input_shape, True],

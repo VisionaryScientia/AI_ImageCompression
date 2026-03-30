@@ -108,7 +108,7 @@ def compress_image(model, image : np.array, input_shape, block_size, batch_size,
     h, w = image.shape[:2]
     bh, bw = input_shape[:2]
     image_blocks = []
-    diff = tf.cast(image,np.float32).numpy()
+    diff = tf.cast(image, np.float32).numpy()
     image_copy = image.numpy()
     y_offset = bh - block_size
     x_offset = bw - block_size

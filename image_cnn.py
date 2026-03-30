@@ -1,9 +1,3 @@
-from keras.callbacks import LearningRateScheduler
-from keras.callbacks import TensorBoard
-from keras.layers import Conv2D, MaxPooling2D, UpSampling2D
-from keras.layers import Flatten, Dense, Reshape, BatchNormalization
-from keras.models import Model
-from keras import losses
 import tensorflow as tf
 from tensorflow import keras as keras
 import os
@@ -15,17 +9,26 @@ import numpy as np
 # Check if a GPU is available
 gpu_devices = tf.config.list_physical_devices('GPU')
 
-if not gpu_devices:
-    print("TensorFlow is using the CPU.")
-else:
+if gpu_devices:
     print(f"TensorFlow is using the following GPU(s): {gpu_devices}")
+else:
+    print("TensorFlow is using the CPU.")
 
 print("Tensorflow: ", tf.version.VERSION)
-print("Keras: ", tf.keras.__version__)
+print("Keras: ", keras.__version__)
+
+from keras.callbacks import LearningRateScheduler
+from keras.callbacks import TensorBoard
+from keras.layers import Conv2D, MaxPooling2D, UpSampling2D
+from keras.layers import Flatten, Dense, Reshape, BatchNormalization
+from keras.models import Model
+from keras import losses
 
 
-# Definition of the Autoencoder model as a subclass of the TensorFlow Model class
 class SimpleAutoencoder(Model):
+    """
+    Definition of the Example autoencoder model as a subclass of the TensorFlow Model class
+    """
     def __init__(self, latent_dimensions, data_shape):
         super(SimpleAutoencoder, self).__init__()
         self.latent_dimensions = latent_dimensions
@@ -52,6 +55,9 @@ class SimpleAutoencoder(Model):
 
 
 class ConvAutoencoder(Model):
+    """
+    Definition of the Autoencoder model as a subclass of the TensorFlow Model class
+    """
     def __init__(self, latent_dimensions, input_shape, loss, learning_rate=0.001):
         super(ConvAutoencoder, self).__init__(input_shape)
         self.latent_dimensions = latent_dimensions
@@ -93,8 +99,6 @@ class ConvAutoencoder(Model):
             self.compile(optimizer=optimizer, loss=losses.MeanSquaredError())
         else:
             self.compile()
-
-    # Forward pass method defining the encoding and decoding steps
 
     def call(self, input_data):
         self.encoded_data = self.encoder(input_data)
