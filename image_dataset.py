@@ -5,21 +5,15 @@ import numpy as np
 import tensorflow as tf
 
 
-def augment_pair(input_block: np.ndarray, target_block: np.ndarray):
+def augment_block(input_block: np.ndarray):
     k = random.randint(0, 3)
     if k > 0:
         input_block = tf.image.rot90(input_block, k)
-        target_block = tf.image.rot90(target_block, k)
-
     if random.randint(0, 3) < 2:
         input_block = tf.image.flip_left_right(input_block)
-        target_block = tf.image.flip_left_right(target_block)
-
     if random.randint(0, 3) < 2:
         input_block = tf.image.flip_up_down(input_block)
-        target_block = tf.image.flip_up_down(target_block)
-
-    return input_block, target_block
+    return input_block
 
 
 def list_image_files(data_dir: str):
@@ -65,9 +59,9 @@ def read_image(filename: str, inpaint_size: int, shape: (int, int, int), augment
             for x in range(x_offset, x_limit + 1, step)]
         for y, x in coords:
             a = image[y:y + shape[0], x:x + shape[1]]
-            b = tf.identity(a)
             if augment:
-                b, a = augment_pair(b, a)
+                a = augment_block(a)
+            b = a.numpy()
             b[-inpaint_size:, -inpaint_size:] = np.mean(a)
             yield (tf.constant(b), tf.constant(a))
     else:
@@ -78,10 +72,9 @@ def read_image(filename: str, inpaint_size: int, shape: (int, int, int), augment
             for x in range(x_offset, x_limit + 1, shape[1])]
         for y, x in coords:
             a = image[y:y + shape[0], x:x + shape[1]]
-            b = tf.identity(a)
             if augment:
-                b, a = augment_pair(b, a)
-            yield (tf.constant(b), tf.constant(a))
+                a = augment_block(a)
+            yield (tf.constant(a), tf.constant(a))
 
 
 def process_path(data_dir: str, inpaint_size: int, shape: (int, int, int), augment: bool):
