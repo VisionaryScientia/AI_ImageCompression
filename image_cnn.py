@@ -90,7 +90,6 @@ class ConvAutoencoder(Model):
             UpSampling2D((2, 2), interpolation='bilinear'),
             Conv2D(1, (3, 3), activation='sigmoid', padding='same')])
         self.decoder.summary()
-
         if loss == 'binary_crossentropy':
             optimizer = keras.optimizers.Adadelta(learning_rate=learning_rate)
             self.compile(optimizer=optimizer, loss='binary_crossentropy')
@@ -107,21 +106,23 @@ class ConvAutoencoder(Model):
 
     def init_weights(self, block_size: int, inpaint_size: int):
         checkpoint_path = "./weights_" + \
-            str(block_size) + "_" + str(inpaint_size) + "/cp-{epoch:04d}.ckpt"
+            str(block_size) + "_" + str(inpaint_size) + "/cp-{epoch:04d}.h5"
         checkpoint_dir = os.path.dirname(checkpoint_path)
-        self.build(input_shape=(None,) + self.data_shape)
+        self.build(input_shape=(None,) + self.shape)
         return checkpoint_path, 0
 
     def load_weights(self, block_size: int, inpaint_size: int, inference_only: bool):
         checkpoint_path = "./weights_" + \
-            str(block_size) + "_" + str(inpaint_size) + "/cp-{epoch:04d}.ckpt"
+            str(block_size) + "_" + str(inpaint_size) + "/cp-{epoch:04d}.h5"
         checkpoint_dir = os.path.dirname(checkpoint_path)
         latest = tf.train.latest_checkpoint(checkpoint_dir)
-
+        self.build(input_shape=(None,) + self.shape)
+  
         initial_epoch = 0
         if latest is not None:
             print("Loading weights from " + latest + "...")
             status = super().load_weights(latest)
+#            super().save_weights(latest[:-4] + "h5")
             if inference_only:
                 status.expect_partial()
             str_list = re.findall(r'\d+', latest)
