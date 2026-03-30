@@ -72,7 +72,7 @@ def int_crop_inplace(image:np.ndarray):
 
 def generate_image():
     data = [x for x in range(100)]
-    image = np.array(data,np.float).reshape(10, 10)
+    image = np.array(data, float).reshape(10, 10)
     return image
 
 
