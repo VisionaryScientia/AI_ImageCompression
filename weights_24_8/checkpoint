@@ -1,2 +1,2 @@
-model_checkpoint_path: "cp-0051.h5"
-all_model_checkpoint_paths: "cp-0051.h5"
+model_checkpoint_path: "cp-0051.weights.h5"
+all_model_checkpoint_paths: "cp-0051.weights.h5"

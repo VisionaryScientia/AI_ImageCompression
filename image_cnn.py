@@ -106,14 +106,14 @@ class ConvAutoencoder(Model):
 
     def init_weights(self, block_size: int, inpaint_size: int):
         checkpoint_path = "./weights_" + \
-            str(block_size) + "_" + str(inpaint_size) + "/cp-{epoch:04d}.h5"
+            str(block_size) + "_" + str(inpaint_size) + "/cp-{epoch:04d}.weights.h5"
         checkpoint_dir = os.path.dirname(checkpoint_path)
         self.build(input_shape=(None,) + self.shape)
         return checkpoint_path, 0
 
     def load_weights(self, block_size: int, inpaint_size: int, inference_only: bool):
         checkpoint_path = "./weights_" + \
-            str(block_size) + "_" + str(inpaint_size) + "/cp-{epoch:04d}.h5"
+            str(block_size) + "_" + str(inpaint_size) + "/cp-{epoch:04d}.weights.h5"
         checkpoint_dir = os.path.dirname(checkpoint_path)
         latest = tf.train.latest_checkpoint(checkpoint_dir)
         self.build(input_shape=(None,) + self.shape)
