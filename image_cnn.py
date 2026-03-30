@@ -59,7 +59,7 @@ class ConvAutoencoder(Model):
     Definition of the Autoencoder model as a subclass of the TensorFlow Model class
     """
     def __init__(self, latent_dimensions, input_shape, loss, learning_rate=0.001):
-        super(ConvAutoencoder, self).__init__(input_shape)
+        super(ConvAutoencoder, self).__init__()
         self.latent_dimensions = latent_dimensions
         self.shape = input_shape
         print("Input shape", input_shape, loss)
