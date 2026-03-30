@@ -212,7 +212,7 @@ if __name__ == "__main__":
 
     autoencoder.summary()
     # preview test
-    files = tf.data.Dataset.list_files(data_path + "/test/*.jpg")
+    files = tf.data.Dataset.list_files(data_path + "/test/*.JPG")
     out_path = "./output"
     if not os.path.exists(out_path):
         os.makedirs(out_path)
