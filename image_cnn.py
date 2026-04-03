@@ -6,6 +6,7 @@ import re
 from image_dataset import create_dataset
 from evaluate_image import evaluate_image
 import numpy as np
+from settings import settings
 # Check if a GPU is available
 gpu_devices = tf.config.list_physical_devices('GPU')
 
@@ -116,8 +117,7 @@ class ConvAutoencoder(Model):
             str(block_size) + "_" + str(inpaint_size) + "/cp-{epoch:04d}.weights.h5"
         checkpoint_dir = os.path.dirname(checkpoint_path)
         latest = tf.train.latest_checkpoint(checkpoint_dir)
-        self.build(input_shape=(None,) + self.shape)
-  
+        self.build(input_shape=(None,) + self.shape) 
         initial_epoch = 0
         if latest is not None:
             print("Loading weights from " + latest + "...")
@@ -125,9 +125,9 @@ class ConvAutoencoder(Model):
 #            super().save_weights(latest[:-4] + "h5")
             if inference_only:
                 status.expect_partial()
-            str_list = re.findall(r'\d+', latest)
-            if len(str_list) > 0:
-                initial_epoch = int(str_list[-1])
+            epoch_str = re.search(r'cp-\d+', latest)
+            if epoch_str:
+                initial_epoch = int(epoch_str.group()[3:])
         else:
             print("Warning: Loading weights from " + checkpoint_dir + " failed")
         return checkpoint_path, initial_epoch
@@ -137,21 +137,6 @@ def make_model(input_size=28, loss='', learning_rate=0.001):
     latent_dimensions = 64
     input_shape = (input_size, input_size, 1)
     return ConvAutoencoder(latent_dimensions, input_shape, loss, learning_rate)
-
-
-class settings():
-    batch_size = 128
-    inpaint_size = 8
-    input_size = 24
-    # max processing size, if an input image has bigger dims it is resized for faster processing
-    max_dim = 640
-    # grayscale images only
-    channels = 1
-    # use low-variance block mask
-    zero_diff = 0
-    # loss can be 'binary_crossentropy', "mean_squared_error" or empty string for inference mode
-    loss = 'mean_squared_error'
-    learning_rate = 0.001
 
 
 def lr_drop_scheduler(epoch, learning_rate):

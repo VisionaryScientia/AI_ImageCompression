@@ -141,11 +141,7 @@ if __name__ == "__main__":
         test_data = np.array(np.random.randint(-128, 128, 50 * 51), np.int16).reshape((50, 51))
         test_data_mask = np.array([np.mod(i, 2) for i in range(10*9)]).reshape(10,9)
         buf = encode_datadiff(test_data, test_data_mask)
-        print(test_data)
-        print(test_data_mask)
         res_data, res_data_mask = decode_datadiff(buf)
-        print(res_data)
-        print(res_data_mask)
         return (test_data == res_data).all() and (test_data_mask == res_data_mask).all()
 
     print("inpaint encode test",  "success" if test_inpaint() else "failed")
