@@ -156,7 +156,7 @@ if __name__ == "__main__":
     train, test, train_steps, validate_steps = create_dataset(
         data_path, settings.batch_size, settings.inpaint_size, autoencoder.shape)
 
-    if len(sys.argv) > 1 and sys.argv[0] == 'init':
+    if len(sys.argv) > 1 and sys.argv[1] == 'init':
         train_epoch_count = 1
         checkpoint_path, initial_epoch = autoencoder.init_weights(
             settings.input_size, settings.inpaint_size)
