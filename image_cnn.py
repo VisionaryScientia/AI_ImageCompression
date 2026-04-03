@@ -182,15 +182,26 @@ if __name__ == "__main__":
 
         lr_scheduler_callback = LearningRateScheduler(lr_drop_scheduler)
         callbacks.append(lr_scheduler_callback)
-
-        autoencoder.fit(train, epochs=initial_epoch + train_epoch_count, initial_epoch=initial_epoch,
+        version_parts = tf.__version__.split('.')
+        if float(version_parts[0] + '.' + version_parts[1] ) >= 2.16:
+            autoencoder.fit(train, epochs=initial_epoch + train_epoch_count, initial_epoch=initial_epoch,
+                        batch_size=settings.batch_size,
+                        steps_per_epoch=train_steps,
+                        shuffle=False,
+                        validation_data=test,
+                        validation_steps=validate_steps,
+                        callbacks=callbacks)
+        else:
+            autoencoder.fit(train, epochs=initial_epoch + train_epoch_count, initial_epoch=initial_epoch,
                         batch_size=settings.batch_size,
                         steps_per_epoch=train_steps,
                         shuffle=False,
                         validation_data=test,
                         validation_steps=validate_steps,
                         use_multiprocessing=True,
+                        workers=1,
                         callbacks=callbacks)
+ 
     else:
         autoencoder.build((settings.batch_size,) + autoencoder.shape)
 
