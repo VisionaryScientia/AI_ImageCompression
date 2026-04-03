@@ -20,7 +20,7 @@ print("Keras: ", keras.__version__)
 
 from keras.callbacks import LearningRateScheduler
 from keras.callbacks import TensorBoard
-from keras.layers import Conv2D, MaxPooling2D, UpSampling2D
+from keras.layers import Conv2D, MaxPooling2D, UpSampling2D, Input
 from keras.layers import Flatten, Dense, Reshape, BatchNormalization
 from keras.models import Model
 from keras import losses
@@ -66,8 +66,8 @@ class ConvAutoencoder(Model):
         print("Input shape", input_shape, loss)
         # Building the encoder of the Auto-encoder
         self.encoder = tf.keras.Sequential([
-            Conv2D(16, (3, 3), activation='relu',
-                   padding='same', input_shape=input_shape),
+            Input(shape=input_shape),  # Explicit Input layer
+            Conv2D(16, (3, 3), activation='relu', padding='same'),
             MaxPooling2D((2, 2), padding='same'),
             BatchNormalization(),
             Conv2D(8, (3, 3), activation='relu', padding='same'),
@@ -79,8 +79,8 @@ class ConvAutoencoder(Model):
         self.encoder.summary()
         # Building the decoder of the Auto-encoder
         self.decoder = tf.keras.Sequential([
-            Conv2D(8, (3, 3), activation='relu', padding='same',
-                   input_shape=self.encoder.output_shape[1:]),
+            Input(shape=self.encoder.output_shape[1:]),  # Explicit Input layer
+            Conv2D(8, (3, 3), activation='relu', padding='same'),
             BatchNormalization(),
             UpSampling2D((2, 2), interpolation='bilinear'),
             Conv2D(8, (3, 3), activation='relu', padding='same'),
