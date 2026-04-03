@@ -187,7 +187,6 @@ if __name__ == "__main__":
                         batch_size=settings.batch_size,
                         steps_per_epoch=train_steps,
                         shuffle=False,
-                        workers=4,
                         validation_data=test,
                         validation_steps=validate_steps,
                         use_multiprocessing=True,
