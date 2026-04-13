@@ -13,16 +13,17 @@ from evaluate_image import \
 data_path = "./images"
 
 def load():
-    autoencoder, input_shape = make_model(settings.input_size)
+    autoencoder = make_model(settings.input_size)
     autoencoder.load_weights(settings.input_size, settings.inpaint_size, inference_only=True)
-    autoencoder.build((settings.batch_size,) + input_shape)
-    autoencoder.summary()
-    return autoencoder, input_shape
+    autoencoder.build((settings.batch_size,) + autoencoder.shape)
+    return autoencoder
 
 if len( sys.argv ) < 4:
     print( "Synopsis: (-c|-d|-t|-v) <input file|folder> <output folder>")
 else:
-    autoencoder, input_shape = load()
+    autoencoder = load()
+    autoencoder.summary()
+    input_shape = autoencoder.shape
     mode, data_path, out_path = sys.argv[1:4]
     if os.path.isdir(data_path):
         print ("Input folder found", data_path)
