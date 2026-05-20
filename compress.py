@@ -96,23 +96,34 @@ else:
                 continue
             base = os.path.basename(image_path.numpy().decode())
             if settings.inpaint_size > 0:
-                diff, mask = compress_image(autoencoder, image, input_shape, settings.inpaint_size, settings.batch_size, settings.zero_diff)
+                diff, mask, ae_output = compress_image(autoencoder, image, input_shape, settings.inpaint_size, settings.batch_size, settings.zero_diff)
                 restored = restore_image(autoencoder, diff, mask, input_shape, settings.inpaint_size)
-                mask_image_upscaled = cv.resize(mask * 255, (0,0), fx=4, fy=4, interpolation=cv.INTER_NEAREST)
+                cv.imwrite(os.path.join(out_path, base + "-restored_latent.png"), ae_output)
             else:
                 latent, diff = latent_compress_image(autoencoder, image, input_shape, settings.batch_size)
+                h, w = tf.shape(image)[:2]
+                mask = np.zeros((h//input_shape[0], w//input_shape[1]),np.uint8)
+                for y in range(0, h, input_shape[0]):
+                   for x in range(0, w, input_shape[1]):
+                       diff_block = diff[y:y + input_shape[0], x:x + input_shape[1]]
+                       diff_var = tf.math.reduce_variance(tf.constant(diff_block, float))
+                       image_block = image[y:y + input_shape[0], x:x + input_shape[1]]
+                       image_var = tf.math.reduce_variance(tf.cast(image_block, float))
+                       mask[y // input_shape[0], x // input_shape[1]] = image_var > diff_var
+
                 if settings.zero_diff == 1:
                     diff.fill(0)
                 restored = latent_restore_image(autoencoder, latent, diff, input_shape, settings.batch_size)
-                mask_image_upscaled = None
+
+            mask_image_upscaled = cv.resize(mask * 255, (0,0), fx=4, fy=4, interpolation=cv.INTER_NEAREST)
             psnr = calculate_psnr(image, restored)
             print(image_path.numpy().decode(), "psnr=", psnr)
-            cv.imwrite(os.path.join(out_path, base + "-compressed.png"), np.clip(diff + 128, 0, 255).astype(np.int8))
+            cv.imwrite(os.path.join(out_path, base + "-compressed.png"), np.clip(diff + 128, 0, 255).astype(np.uint8))
             if not mask_image_upscaled is None:
                 cv.imwrite(os.path.join(out_path, base + "-mask.png"), mask_image_upscaled)
-            print(image_path.numpy().decode(), "CNN predicted blocks", mask.sum(),
-                "of", mask.shape[0] * mask.shape[1],
-                "ratio", mask.sum() / (mask.shape[0] * mask.shape[1]))
+                print(image_path.numpy().decode(), "CNN predicted blocks", mask.sum(),
+                    "of", mask.shape[0] * mask.shape[1],
+                    "ratio", mask.sum() / (mask.shape[0] * mask.shape[1]))
 
             visualize = sys.argv[1] == "-v" or sys.argv[1] == "-V"
             if visualize:
