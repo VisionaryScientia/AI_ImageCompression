@@ -26,8 +26,8 @@ def calculate_psnr(img1, img2, max_pixel_value=255.0):
         float: The PSNR value in decibels (dB).
     """
     # Ensure images have float64 data type for accurate calculations
-    img1 = img1.astype(np.float64)
-    img2 = img2.astype(np.float64)
+    img1 = np.array(img1, np.float64)
+    img2 = np.array(img2, np.float64)
 
     # Calculate Mean Squared Error (MSE)
     mse = np.mean((img1 - img2) ** 2)
@@ -110,6 +110,7 @@ def compress_image(model, image : np.array, input_shape, block_size, batch_size,
     image_blocks = []
     diff = tf.cast(image,np.float32).numpy()
     image_copy = image.numpy()
+    predicted_image = np.zeros((h,w), float)
     y_offset = bh - block_size
     x_offset = bw - block_size
     delim = np.ones([bh,1,1], np.float32) * 255
@@ -133,6 +134,7 @@ def compress_image(model, image : np.array, input_shape, block_size, batch_size,
                     image_copy[y - shift_y:y + block_size, x - shift_x:x + block_size])[shift_y:, shift_x:]
                 continue
             predicted_block = predicted[idx][-block_size:, -block_size:] * 255
+            predicted_image[y:y + block_size, x:x + block_size] = np.squeeze(predicted_block, axis=-1)
             # check prediction quality
             image_block = diff[y:y + block_size, x:x + block_size]
             block_diff = image_block - predicted_block
@@ -142,7 +144,7 @@ def compress_image(model, image : np.array, input_shape, block_size, batch_size,
                 diff_var = tf.math.reduce_variance(block_diff)
                 image_var = tf.math.reduce_variance(image_block)
                 prediction_good = image_var > diff_var
-            if prediction_good and zero_diff == 0:
+            if prediction_good or zero_diff == 1 and clipping_good:
                 mask[y // block_size, x // block_size] = 1
                 diff[y:y + block_size, x:x + block_size] = diff_image(tf.cast(block_diff, np.int16).numpy())
             else:
@@ -155,7 +157,8 @@ def compress_image(model, image : np.array, input_shape, block_size, batch_size,
                 cv.imshow("preview", np.clip(v, 0, 255).astype(np.uint8))
                 cv.waitKey()
             idx += 1
-    return diff.astype(np.int16), mask
+    return diff.astype(np.int16), mask, np.clip(predicted_image, 0, 255).astype(np.uint8)
+
 
 
 def compress_image_to_file(model, image: np.array,
@@ -168,7 +171,7 @@ def compress_image_to_file(model, image: np.array,
     :return: diff - for statistics evaluation
     """
     if block_size > 0:
-        diff, mask = compress_image(model, image, input_shape, block_size, batch_size, zero_diff)
+        diff, mask, _ = compress_image(model, image, input_shape, block_size, batch_size, zero_diff)
         if VERBOSE:
             print("CNN predicted blocks", mask.sum(), "of", mask.shape[0] * mask.shape[1],
                 "ratio", mask.sum() / (mask.shape[0] * mask.shape[1]))

@@ -1,7 +1,5 @@
 Title of Paper: Image compression approach on autoencoder architecture
 
-Link: http://www.ipol.im/ 
-Version: Preprint 1.0
 Date: February 26, 2026 
 
 Authors: Oleksandr Kis (o.kis@duikt.edu.ua), Gennadiy Kis
@@ -15,16 +13,18 @@ In brief, it's the experimental autoencoder NN for loseless image compression fo
 
 
 ## Contents & Organization
-Root Directory: Core execution scripts (compress.py, image_cnn.py).
-images/: Dataset of gray-level test images (512x512).
-weights_.../: Pre-trained NN weights (4K params) for different mask sizes.
-requirements.txt: Python dependencies.
-LICENSE: GNU license text.
+The Root Directory contains:
+- \*.bat: execution scripts for Windows (setup.bat, train.bat, test.bat)
+- \*.py: Python source core  (compress.py, image_cnn.py etc.).
+- images: Dataset of training and test images.
+- weights_...: Pre-trained NN weights for different mask sizes.
+- requirements.txt: Python dependencies.
+- LICENSE: GNU license text.
 
 ## Installation
 
 
-The following prerequisites required:
+The following prerequisites required (see requirements.txt):
 Python 3.8
 with following packages:
 zlib
