@@ -97,11 +97,11 @@ test.bat
 This script compressed a file to the 'compressed' folder then restore it back into 'decompressed' folder and show the result image.
 
 ## LICENSE  
-GNU AGPL
 Copyright (c) 2026 GENNADIY KIS, OLEKSANDR KIS
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to use, copy, modify, merge, publish, and distribute the Software solely for NON-COMMERCIAL, EDUCATIONAL, and SCIENTIFIC RESEARCH purposes, subject to the following conditions:
 
-This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+1. The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+2. Any publication, paper, or scientific work that utilizes this Software must provide proper academic attribution referencing this repository.
+3. For commercial licensing inquiries or permission to use the Software outside the scope of this license, please contact the authors.
 
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License along with this program. If not, see <http://www.gnu.org/licenses/>.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
